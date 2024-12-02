@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Define directories
+BIN_DIR="/usr/local/bin"
+SHARE_DIR="$HOME/sources"
+TMP_DIR="$SHARE_DIR/tarinstall"
+LOG_FILE="$TMP_DIR/install.log"
+
+# Function to display minimal output
+show_progress() {
+  local progress=$1
+  echo -e "\n============================================================================="
+  echo -e " Installing $2"
+  echo -e "============================================================================="
+  echo -e " Downloading…"
+  echo -n "["
+  for ((i=0; i<50; i++)); do
+    if ((i < progress/2)); then
+      echo -n "#"
+    else
+      echo -n " "
+    fi
+  done
+  echo -n "] $progress%"
+  echo -e "\nDone"
+}
+
+# Download tarball to sources directory
+download_tarball() {
+  PACKAGE_URL=$1
+  PACKAGE_NAME=$(basename "$PACKAGE_URL")
+
+  # Ensure the sources directory exists
+  mkdir -p "$SHARE_DIR"
+
+  # Download the tarball to sources directory
+  wget -q -P "$SHARE_DIR" "$PACKAGE_URL" && echo "Download completed."
+}
+
+# Install a package from URL
+install_from_url() {
+  PACKAGE_URL=$1
+  PACKAGE_NAME=$(basename "$PACKAGE_URL" .tar.*)
+  PACKAGE_DIR="$TMP_DIR/$PACKAGE_NAME"
+
+  # Step 1: Download the tarball
+  mkdir -p "$TMP_DIR"
+  cd "$TMP_DIR"
+  download_tarball "$PACKAGE_URL"
+
+  # Step 2: Extract the tarball (suppress output)
+  mkdir -p "$PACKAGE_DIR"
+  tar -xf "$SHARE_DIR/$PACKAGE_NAME" -C "$PACKAGE_DIR" > /dev/null 2>&1
+  cd "$PACKAGE_DIR"/*/
+
+  # Step 3: Check for a configure script and install
+  if [ -f "configure" ]; then
+    # Silent mode for make to reduce output
+    ./configure --prefix=/usr --sysconfdir=/etc > /dev/null 2>&1
+    make -s > /dev/null 2>&1
+
+    # Step 4: Install the package
+    sudo make install > /dev/null 2>&1
+    show_progress 100 "$PACKAGE_NAME"
+  else
+    echo -e "\nNo configure script found. This package may require a different installation process."
+    cleanup
+    exit 1
+  fi
+}
+
+# Cleanup
+cleanup() {
+  rm -rf "$TMP_DIR"
+}
+
+# Main script logic
+if [ "$1" == "install" ]; then
+  if [ -z "$2" ]; then
+    echo "Please provide a package URL to install."
+    exit 1
+  fi
+
+  # Install directly from the URL
+  install_from_url "$2"
+else
+  echo "Usage: tarinstall install <URL>"
+  exit 1
+fi
