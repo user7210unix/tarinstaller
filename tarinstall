@@ -1,89 +1,100 @@
 #!/bin/bash
+# Pack is a simple package manager for LFS-like linux distros, where user is in charge of 
+# installing package, checking dependencies, and checking conflict.
+# Pack is only in charge of keeping track of what and how many packages are insatlled in the system.
 
-# Define directories
-BIN_DIR="/usr/local/bin"
-SHARE_DIR="$HOME/sources"
-TMP_DIR="$SHARE_DIR/tarinstall"
-LOG_FILE="$TMP_DIR/install.log"
+source_dir=~/sources
+package_list=~/packages
 
-# Function to display minimal output
-show_progress() {
-  local progress=$1
-  echo -e "\n============================================================================="
-  echo -e " Installing $2"
-  echo -e "============================================================================="
-  echo -e " Downloading…"
-  echo -n "["
-  for ((i=0; i<50; i++)); do
-    if ((i < progress/2)); then
-      echo -n "#"
-    else
-      echo -n " "
-    fi
-  done
-  echo -n "] $progress%"
-  echo -e "\nDone"
+function check_package() {
+	[ "$(grep -c "$1" "$package_list")" -eq 0 ] && return 0
+	return 1
 }
 
-# Download tarball to sources directory
-download_tarball() {
-  PACKAGE_URL=$1
-  PACKAGE_NAME=$(basename "$PACKAGE_URL")
+download_package() {
+	[ -z "$1" ] && echo "Usage: download (URL)" && exit 0
+	package=$(basename "$1") #Compressed
+	extension="${package##*.}" # Extension
+	dir_name=$(echo "$package" | sed -n '/\.tar\."$extension"$/s///p') #Wihout extension
 
-  # Ensure the sources directory exists
-  mkdir -p "$SHARE_DIR"
+	check_package "$dir_name"
+	[ "$?" -eq 1 ] && echo "$dir_name is already installed" && exit 0
 
-  # Download the tarball to sources directory
-  wget -q -P "$SHARE_DIR" "$PACKAGE_URL" && echo "Download completed."
+	wget -- "$1" --directory-prefix="$source_dir"
+
+	mkdir -p "$source_dir/$dir_name"
+	tar -vxkf "$source_dir/$package" -C "$source_dir"
+	cd "$source_dir/$dir_name" || exit
+	exec bash
 }
 
-# Install a package from URL
-install_from_url() {
-  PACKAGE_URL=$1
-  PACKAGE_NAME=$(basename "$PACKAGE_URL" .tar.*)
-  PACKAGE_DIR="$TMP_DIR/$PACKAGE_NAME"
+add_package() {
+	[ -z "$1" ] && echo "Useage: add (Package Name)" && exit 0
+	comp=$(basename "$1")
+	extension="${comp##*.}"
+	package=$(echo "$comp" | sed -n '/\.tar\."$extension"$/s///p')
 
-  # Step 1: Download the tarball
-  mkdir -p "$TMP_DIR"
-  cd "$TMP_DIR"
-  download_tarball "$PACKAGE_URL"
+	[ -z "$package" ] && echo "Source file is required (.tar)" && return 0
 
-  # Step 2: Extract the tarball (suppress output)
-  mkdir -p "$PACKAGE_DIR"
-  tar -xf "$SHARE_DIR/$PACKAGE_NAME" -C "$PACKAGE_DIR" > /dev/null 2>&1
-  cd "$PACKAGE_DIR"/*/
+	check_package "$package"
+	[ "$?" -eq 1 ] && echo "Package ($package) already exists." && return 0
 
-  # Step 3: Check for a configure script and install
-  if [ -f "configure" ]; then
-    # Silent mode for make to reduce output
-    ./configure --prefix=/usr --sysconfdir=/etc > /dev/null 2>&1
-    make -s > /dev/null 2>&1
-
-    # Step 4: Install the package
-    sudo make install > /dev/null 2>&1
-    show_progress 100 "$PACKAGE_NAME"
-  else
-    echo -e "\nNo configure script found. This package may require a different installation process."
-    cleanup
-    exit 1
-  fi
+	echo "$package" >> "$package_list"
+	echo "$package added"
 }
 
-# Cleanup
-cleanup() {
-  rm -rf "$TMP_DIR"
+sync_dir() {
+	dir="$1"
+	[ -z "$1" ] && dir="$source_dir" && printf '%b\n' "Directory not given, using default source directory:\n$source_dir" && dir="$source_dir"
+
+	for file in "$dir"/*; do
+		comp=$(basename "$file")
+		extension="${comp##*.}"
+
+		if [ -n "$extension" ] &&
+				[ -n "$comp" ] &&
+				[ -d "$comp" ] &&
+				#[ "$extension" = "tgz" ] ||
+				[ "$extension" = "bz2" ] ||
+				[ "$extension" = "xz" ]  ||
+				[ "$extension" = "gz" ]; then
+			add_package "$comp"
+		fi
+	done
 }
 
-# Main script logic
-if [ "$1" == "install" ]; then
-  if [ -z "$2" ]; then
-    echo "Please provide a package URL to install."
-    exit 1
-  fi
+remove_package() {
+	[ -z "$1" ] && echo "Usage: remove (Package Name)." && exit 0
+	comp=$(basename "$1")
+	extension="${comp##*.}"
+	package=$(echo "$comp" | sed -n '/\.tar\."$extension"$/s///p')
 
-  # Install directly from the URL
-  install_from_url "$2"
-else
-  echo "Usage: tarinstall install <URL>"
-  exit 1
-fi
+	check_package "$package"
+	[ "$?" -eq 0 ] || [ -z "$package" ] && echo "$package not found." && return 0
+
+	sed '/"$package"/d;' $package_list >> ${package_list}.new && mv ${package_list}.new $package_list
+	echo "$package removed."
+}
+
+package_list() {
+	cat "$package_list"
+}
+
+package_count() {
+	wc -l "$package_list"
+}
+
+main() {
+	case "$1" in
+		add) add_package "$2" ;;
+		sync) sync_dir "$2" ;;
+		remove) remove_package "$2" ;;
+		download) download_package "$2" ;;
+		install) download_package "$2" ;;
+		list) package_list "$@" ;;
+		count) package_count "$@" ;;
+		*) echo "No such command.";;
+	esac
+}
+
+main "$@"
