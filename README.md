@@ -42,10 +42,19 @@
 </div> 
 
 
-## 🔑 Install Command
-
-#### 📱 **./tarinstall install https://ftp.gnu.org/gnu/wget/wget-1.25.0.tar.gz**
-
 ## ⚙️ Example Package Repository
 
 #### **https://www.linuxfromscratch.org/lfs/view/stable/wget-list-sysv**
+
+
+📦 𝘽𝙪𝙞𝙡𝙙 𝙖𝙣𝙙 𝙍𝙪𝙣
+
+To compile and run systop, follow these steps 👇
+
+<div align="center">
+
+```bash
+git clone https://github.com/user7210unix/tarinstaller.git
+cd tarinstall
+chmod +x tarinstall
+./tarinstall
