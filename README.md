@@ -38,12 +38,22 @@
 </div> 
 
 
+<div style="display: flex; align-items: center; margin-bottom: 40px;">
+  <div style="flex: 1; padding-right: 20px;">
+    <p><strong>📱 Remove Function</strong></p>
+<h1>
+      <img src="tarinstall2.png" align="right" alt="Preview" width="550" style="display: block; margin: 32px auto; border: 2px solid #555; border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);">
+</div>
+</div> 
+
 
 ## 🔑 Install Command
 
-#### 📱 **./tarinstall install <link>**
+#### 📱 **./tarinstall install https://ftp.gnu.org/gnu/wget/wget-1.25.0.tar.gz**
 
+## ⚙️ Example Package Repository
 
+#### **https://www.linuxfromscratch.org/lfs/view/stable/wget-list-sysv**
   ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ 
 <div align="center">
 
