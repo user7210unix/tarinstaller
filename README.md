@@ -1,8 +1,3 @@
-<div align="center">
-  <h1> <strong>𝗧𝗔𝗥𝗜𝗡𝗦𝗧𝗔𝗟𝗟</strong> </h1>
-</div>
-
-<div align="center">
 
 ```css
   _______       _____  _____ _   _  _____ _______       _      _      
