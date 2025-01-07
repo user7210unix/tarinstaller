@@ -54,15 +54,3 @@
 ## ⚙️ Example Package Repository
 
 #### **https://www.linuxfromscratch.org/lfs/view/stable/wget-list-sysv**
-  ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ 
-<div align="center">
-
-  ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ 
-
-
-
-<h3 align="center">
-    <a href="#----setup-----wiki-----gallery-----tip-jar"><tt>👆 Back to top</tt></a>
-</h3>
-
-
