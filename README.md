@@ -71,7 +71,7 @@ To compile and run systop, follow these steps 👇
 ```bash
 git clone https://github.com/user7210unix/tarinstaller.git
 cd tarinstaller
-chmod +x tarinstall
-sudo cp -r tarinstall /usr/bin/
+chmod +x tarinstaller
+sudo cp -r tarinstaller /usr/bin/
 cd $HOME
-tarinstall --help
+tarinstaller --help
