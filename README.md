@@ -1,16 +1,5 @@
 <div align="center">
 
-```css
-  _______       _____  _____ _   _  _____ _______       _      _      
- |__   __|/\   |  __ \|_   _| \ | |/ ____|__   __|/\   | |    | |     
-    | |  /  \  | |__) | | | |  \| | (___    | |  /  \  | |    | |     
-    | | / /\ \ |  _  /  | | | . ` |\___ \   | | / /\ \ | |    | |     
-    | |/ ____ \| | \ \ _| |_| |\  |____) |  | |/ ____ \| |____| |____ 
-    |_/_/    \_\_|  \_\_____|_| \_|_____/   |_/_/    \_\______|______|
-```
-
-<div align="center">
-
 <h1>
       <img src="images/tar1.png" align="center" alt="Preview" width="550" style="display: block; margin: 32px auto; border: 2px solid #555; border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);">
 </div>
