@@ -27,7 +27,7 @@ function download_and_install() {
     fi
 
     echo "╭───────────────────────────────╮"
-    echo "│ Installing $dir_name...     │"
+    echo "│ Installing $dir_name...      │"
     echo "╰───────────────────────────────╯"
 
     echo "Downloading..."
@@ -44,7 +44,7 @@ function download_and_install() {
     echo "$dir_name" >> "$PACKAGE_LIST"
 
     echo "╭───────────────────────────────╮"
-    echo "│ $dir_name installed! Done   │"
+    echo "│ $dir_name installed! Done    │"
     echo "╰───────────────────────────────╯"
 }
 
