@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# Simplified package manager for LFS-like Linux distros
+# Command: ./tarinstall <command> <URL or Package Name>
+
+SOURCE_DIR=~/sources
+PACKAGE_LIST=~/packages/packages.list
+INSTALL_DIR=/usr/local
+VERBOSE=false
+
+function check_package() {
+    [ -f "$PACKAGE_LIST" ] && grep -q "$1" "$PACKAGE_LIST" && return 1 || return 0
+}
+
+function download_and_install() {
+    [ -z "$1" ] && echo "Usage: install <URL>" && exit 1
+
+    local url="$1"
+    local package=$(basename "$url")
+    local extension="${package##*.}"
+    local dir_name="${package%.tar.$extension}"
+
+    check_package "$dir_name"
+    if [ $? -eq 1 ]; then
+        echo "$dir_name is already installed."
+        exit 0
+    fi
+
+    echo "╭───────────────────────────────╮"
+    echo "│ Installing $dir_name...     │"
+    echo "╰───────────────────────────────╯"
+
+    echo "Downloading..."
+    wget "$url" -P "$SOURCE_DIR" ${VERBOSE:+} > /dev/null 2>&1
+
+    echo "Unpacking..."
+    mkdir -p "$SOURCE_DIR/$dir_name"
+    tar -xf "$SOURCE_DIR/$package" -C "$SOURCE_DIR/$dir_name" --strip-components=1 ${VERBOSE:+} > /dev/null 2>&1
+
+    echo "Installing in $INSTALL_DIR..."
+    cd "$SOURCE_DIR/$dir_name" || exit
+    ./configure --prefix="$INSTALL_DIR" ${VERBOSE:+} > /dev/null 2>&1 && make ${VERBOSE:+} > /dev/null 2>&1 && sudo make install ${VERBOSE:+} > /dev/null 2>&1
+
+    echo "$dir_name" >> "$PACKAGE_LIST"
+
+    echo "╭───────────────────────────────╮"
+    echo "│ $dir_name installed! Done   │"
+    echo "╰───────────────────────────────╯"
+}
+
+function remove_package() {
+    [ -z "$1" ] && echo "Usage: remove <Package Name>" && exit 1
+
+    local package="$1"
+
+    check_package "$package"
+    if [ $? -eq 0 ]; then
+        echo "$package not found."
+        exit 1
+    fi
+
+    echo "Removing $package..."
+    sudo make uninstall -C "$SOURCE_DIR/$package" ${VERBOSE:+} > /dev/null 2>&1
+    sed -i "/$package/d" "$PACKAGE_LIST"
+
+    echo "$package removed."
+}
+
+function list_packages() {
+    echo "Installed packages:"
+    cat "$PACKAGE_LIST"
+}
+
+function package_count() {
+    echo "Total packages installed: $(wc -l < "$PACKAGE_LIST")"
+}
+
+function show_help() {
+    echo "Usage: $0 [options] <command> [arguments]"
+    echo "Options:"
+    echo "  --help         Show this help message"
+    echo "  -v             Enable verbose output"
+    echo "Commands:"
+    echo "  install <URL>     Install package from URL"
+    echo "  remove <Package>  Remove installed package"
+    echo "  list              List installed packages"
+    echo "  count             Show package count"
+}
+
+function main() {
+    while [[ "$1" =~ ^- ]]; do
+        case "$1" in
+            --help) show_help; exit 0 ;;
+            -v) VERBOSE=true ;;
+            *) echo "Unknown option: $1"; exit 1 ;;
+        esac
+        shift
+    done
+
+    case "$1" in
+        install) download_and_install "$2" ;;
+        remove) remove_package "$2" ;;
+        list) list_packages ;;
+        count) package_count ;;
+        *)
+            echo "Unknown command: $1"
+            echo "Use --help for usage information."
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
