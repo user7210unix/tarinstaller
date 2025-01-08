@@ -1,100 +1,113 @@
 #!/bin/bash
-# Pack is a simple package manager for LFS-like linux distros, where user is in charge of 
-# installing package, checking dependencies, and checking conflict.
-# Pack is only in charge of keeping track of what and how many packages are insatlled in the system.
 
-source_dir=~/sources
-package_list=~/packages
+# Simplified package manager for LFS-like Linux distros
+# Command: ./tarinstall <command> <URL or Package Name>
+
+SOURCE_DIR=~/sources
+PACKAGE_LIST=~/packages/packages.list
+INSTALL_DIR=/usr/local
+VERBOSE=false
 
 function check_package() {
-	[ "$(grep -c "$1" "$package_list")" -eq 0 ] && return 0
-	return 1
+    [ -f "$PACKAGE_LIST" ] && grep -q "$1" "$PACKAGE_LIST" && return 1 || return 0
 }
 
-download_package() {
-	[ -z "$1" ] && echo "Usage: download (URL)" && exit 0
-	package=$(basename "$1") #Compressed
-	extension="${package##*.}" # Extension
-	dir_name=$(echo "$package" | sed -n '/\.tar\."$extension"$/s///p') #Wihout extension
+function download_and_install() {
+    [ -z "$1" ] && echo "Usage: install <URL>" && exit 1
 
-	check_package "$dir_name"
-	[ "$?" -eq 1 ] && echo "$dir_name is already installed" && exit 0
+    local url="$1"
+    local package=$(basename "$url")
+    local extension="${package##*.}"
+    local dir_name="${package%.tar.$extension}"
 
-	wget -- "$1" --directory-prefix="$source_dir"
+    check_package "$dir_name"
+    if [ $? -eq 1 ]; then
+        echo "$dir_name is already installed."
+        exit 0
+    fi
 
-	mkdir -p "$source_dir/$dir_name"
-	tar -vxkf "$source_dir/$package" -C "$source_dir"
-	cd "$source_dir/$dir_name" || exit
-	exec bash
+    echo "╭───────────────────────────────╮"
+    echo "│ Installing $dir_name...     │"
+    echo "╰───────────────────────────────╯"
+
+    echo "Downloading..."
+    wget "$url" -P "$SOURCE_DIR" ${VERBOSE:+} > /dev/null 2>&1
+
+    echo "Unpacking..."
+    mkdir -p "$SOURCE_DIR/$dir_name"
+    tar -xf "$SOURCE_DIR/$package" -C "$SOURCE_DIR/$dir_name" --strip-components=1 ${VERBOSE:+} > /dev/null 2>&1
+
+    echo "Installing in $INSTALL_DIR..."
+    cd "$SOURCE_DIR/$dir_name" || exit
+    ./configure --prefix="$INSTALL_DIR" ${VERBOSE:+} > /dev/null 2>&1 && make ${VERBOSE:+} > /dev/null 2>&1 && sudo make install ${VERBOSE:+} > /dev/null 2>&1
+
+    echo "$dir_name" >> "$PACKAGE_LIST"
+
+    echo "╭───────────────────────────────╮"
+    echo "│ $dir_name installed! Done   │"
+    echo "╰───────────────────────────────╯"
 }
 
-add_package() {
-	[ -z "$1" ] && echo "Useage: add (Package Name)" && exit 0
-	comp=$(basename "$1")
-	extension="${comp##*.}"
-	package=$(echo "$comp" | sed -n '/\.tar\."$extension"$/s///p')
+function remove_package() {
+    [ -z "$1" ] && echo "Usage: remove <Package Name>" && exit 1
 
-	[ -z "$package" ] && echo "Source file is required (.tar)" && return 0
+    local package="$1"
 
-	check_package "$package"
-	[ "$?" -eq 1 ] && echo "Package ($package) already exists." && return 0
+    check_package "$package"
+    if [ $? -eq 0 ]; then
+        echo "$package not found."
+        exit 1
+    fi
 
-	echo "$package" >> "$package_list"
-	echo "$package added"
+    echo "Removing $package..."
+    sudo make uninstall -C "$SOURCE_DIR/$package" ${VERBOSE:+} > /dev/null 2>&1
+    sed -i "/$package/d" "$PACKAGE_LIST"
+
+    echo "$package removed."
 }
 
-sync_dir() {
-	dir="$1"
-	[ -z "$1" ] && dir="$source_dir" && printf '%b\n' "Directory not given, using default source directory:\n$source_dir" && dir="$source_dir"
-
-	for file in "$dir"/*; do
-		comp=$(basename "$file")
-		extension="${comp##*.}"
-
-		if [ -n "$extension" ] &&
-				[ -n "$comp" ] &&
-				[ -d "$comp" ] &&
-				#[ "$extension" = "tgz" ] ||
-				[ "$extension" = "bz2" ] ||
-				[ "$extension" = "xz" ]  ||
-				[ "$extension" = "gz" ]; then
-			add_package "$comp"
-		fi
-	done
+function list_packages() {
+    echo "Installed packages:"
+    cat "$PACKAGE_LIST"
 }
 
-remove_package() {
-	[ -z "$1" ] && echo "Usage: remove (Package Name)." && exit 0
-	comp=$(basename "$1")
-	extension="${comp##*.}"
-	package=$(echo "$comp" | sed -n '/\.tar\."$extension"$/s///p')
-
-	check_package "$package"
-	[ "$?" -eq 0 ] || [ -z "$package" ] && echo "$package not found." && return 0
-
-	sed '/"$package"/d;' $package_list >> ${package_list}.new && mv ${package_list}.new $package_list
-	echo "$package removed."
+function package_count() {
+    echo "Total packages installed: $(wc -l < "$PACKAGE_LIST")"
 }
 
-package_list() {
-	cat "$package_list"
+function show_help() {
+    echo "Usage: $0 [options] <command> [arguments]"
+    echo "Options:"
+    echo "  --help         Show this help message"
+    echo "  -v             Enable verbose output"
+    echo "Commands:"
+    echo "  install <URL>     Install package from URL"
+    echo "  remove <Package>  Remove installed package"
+    echo "  list              List installed packages"
+    echo "  count             Show package count"
 }
 
-package_count() {
-	wc -l "$package_list"
-}
+function main() {
+    while [[ "$1" =~ ^- ]]; do
+        case "$1" in
+            --help) show_help; exit 0 ;;
+            -v) VERBOSE=true ;;
+            *) echo "Unknown option: $1"; exit 1 ;;
+        esac
+        shift
+    done
 
-main() {
-	case "$1" in
-		add) add_package "$2" ;;
-		sync) sync_dir "$2" ;;
-		remove) remove_package "$2" ;;
-		download) download_package "$2" ;;
-		install) download_package "$2" ;;
-		list) package_list "$@" ;;
-		count) package_count "$@" ;;
-		*) echo "No such command.";;
-	esac
+    case "$1" in
+        install) download_and_install "$2" ;;
+        remove) remove_package "$2" ;;
+        list) list_packages ;;
+        count) package_count ;;
+        *)
+            echo "Unknown command: $1"
+            echo "Use --help for usage information."
+            exit 1
+            ;;
+    esac
 }
 
 main "$@"
