@@ -5,13 +5,15 @@
 
 SOURCE_DIR=~/sources
 PACKAGE_LIST=~/packages/packages.list
-INSTALL_DIR=/usr/local/bin/
+INSTALL_DIR=/usr/bin/
 VERBOSE=false
 
+# Function to check if the package is already installed
 function check_package() {
     [ -f "$PACKAGE_LIST" ] && grep -q "$1" "$PACKAGE_LIST" && return 1 || return 0
 }
 
+# Function to download, unpack, configure, and install a package
 function download_and_install() {
     [ -z "$1" ] && echo "Usage: install <URL>" && exit 1
 
@@ -20,26 +22,63 @@ function download_and_install() {
     local extension="${package##*.}"
     local dir_name="${package%.tar.$extension}"
 
-    check_package "$dir_name"
-    if [ $? -eq 1 ]; then
-        echo "$dir_name is already installed."
-        exit 0
+    # If URL is a git repository (ends with .git), clone it
+    if [[ "$url" == *.git ]]; then
+        dir_name="${package%.git}"
+        if [ -d "$SOURCE_DIR/$dir_name" ]; then
+            echo "$dir_name already exists. Pulling latest changes..."
+            cd "$SOURCE_DIR/$dir_name" && git pull origin main && return
+        fi
+        echo "Cloning $url..."
+        git clone "$url" "$SOURCE_DIR/$dir_name"
+    else
+        check_package "$dir_name"
+        if [ $? -eq 1 ]; then
+            echo "$dir_name is already installed."
+            exit 0
+        fi
+
+        echo "╭───────────────────────────────╮"
+        echo "│ Installing $dir_name...      │"
+        echo "╰───────────────────────────────╯"
+
+        echo "Downloading..."
+        wget "$url" -P "$SOURCE_DIR" ${VERBOSE:+} > /dev/null 2>&1
+
+        echo "Unpacking $package..."
+        mkdir -p "$SOURCE_DIR/$dir_name"
+        tar -xf "$SOURCE_DIR/$package" -C "$SOURCE_DIR/$dir_name" --strip-components=1 ${VERBOSE:+} > /dev/null 2>&1
     fi
 
-    echo "╭───────────────────────────────╮"
-    echo "│ Installing $dir_name...      │"
-    echo "╰───────────────────────────────╯"
-
-    echo "Downloading..."
-    wget "$url" -P "$SOURCE_DIR" ${VERBOSE:+} > /dev/null 2>&1
-
-    echo "Unpacking..."
-    mkdir -p "$SOURCE_DIR/$dir_name"
-    tar -xf "$SOURCE_DIR/$package" -C "$SOURCE_DIR/$dir_name" --strip-components=1 ${VERBOSE:+} > /dev/null 2>&1
-
-    echo "Installing in $INSTALL_DIR..."
+    echo "Configuring build system..."
     cd "$SOURCE_DIR/$dir_name" || exit
-    ./configure --prefix="$INSTALL_DIR" ${VERBOSE:+} > /dev/null 2>&1 && make ${VERBOSE:+} > /dev/null 2>&1 && sudo make install ${VERBOSE:+} > /dev/null 2>&1
+
+    # For packages that require autogen.sh (like htop)
+    if [ -f "autogen.sh" ]; then
+        echo "Running autogen.sh to generate configuration files..."
+        ./autogen.sh ${VERBOSE:+} > /dev/null 2>&1
+    fi
+
+    # Detect and run the build system
+    if [ -f "configure" ]; then
+        echo "Running configure..."
+        ./configure --prefix=/usr ${VERBOSE:+} > /dev/null 2>&1
+    elif [ -f "CMakeLists.txt" ]; then
+        echo "Running cmake..."
+        cmake . -DCMAKE_INSTALL_PREFIX=/usr ${VERBOSE:+} > /dev/null 2>&1
+    elif [ -f "meson.build" ]; then
+        echo "Running meson..."
+        meson setup build ${VERBOSE:+} > /dev/null 2>&1
+    else
+        echo "No known build system found (configure, CMake, Meson, autogen.sh). Exiting."
+        exit 1
+    fi
+
+    echo "Compiling..."
+    make ${VERBOSE:+} > /dev/null 2>&1
+
+    echo "Installing..."
+    sudo make install ${VERBOSE:+} > /dev/null 2>&1
 
     echo "$dir_name" >> "$PACKAGE_LIST"
 
@@ -48,6 +87,7 @@ function download_and_install() {
     echo "╰───────────────────────────────╯"
 }
 
+# Function to remove an installed package
 function remove_package() {
     [ -z "$1" ] && echo "Usage: remove <Package Name>" && exit 1
 
@@ -66,15 +106,18 @@ function remove_package() {
     echo "$package removed."
 }
 
+# Function to list installed packages
 function list_packages() {
     echo "Installed packages:"
     cat "$PACKAGE_LIST"
 }
 
+# Function to count installed packages
 function package_count() {
     echo "Total packages installed: $(wc -l < "$PACKAGE_LIST")"
 }
 
+# Function to show help message
 function show_help() {
     echo "Usage: $0 [options] <command> [arguments]"
     echo "Options:"
@@ -87,6 +130,7 @@ function show_help() {
     echo "  count             Show package count"
 }
 
+# Main function to process arguments and run commands
 function main() {
     while [[ "$1" =~ ^- ]]; do
         case "$1" in
