@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Simplified package manager for LFS-like Linux distros
-# Command: ./tarinstall <command> <URL or Package Name>
+# Simplified package manager for LFS-like Linux Systems
+# Command: tarinstaller <command> <URL or Package Name>
 
 SOURCE_DIR=~/sources
 PACKAGE_LIST=~/packages/packages.list
-INSTALL_DIR=/usr/local
+INSTALL_DIR=/usr/local/bin/
 VERBOSE=false
 
 function check_package() {
