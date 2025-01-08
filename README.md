@@ -73,4 +73,5 @@ git clone https://github.com/user7210unix/tarinstaller.git
 cd tarinstaller
 chmod +x tarinstall
 sudo cp -r tarinstall /usr/bin/
-tarinstall
+cd $HOME
+tarinstall --help
