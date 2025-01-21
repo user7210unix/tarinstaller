@@ -54,4 +54,6 @@ cd tarinstaller
 chmod +x tarinstaller
 sudo cp -r tarinstaller /usr/bin/
 cd $HOME
+mkdir $HOME/packages
+touch $HOME/packages/packages.list
 tarinstaller --help
