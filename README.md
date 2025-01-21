@@ -9,9 +9,6 @@
 </div>
 
 
-WORK IN PROGRESS
-
-
 <div align="center">
 
 <h1>
